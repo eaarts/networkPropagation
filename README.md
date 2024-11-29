@@ -1,4 +1,7 @@
-# networkPropagation
-Repository for the analysis of ciliopathy phenotypes using network propagation. 
-I compare ciliopathies to human and mouse phenotypes to identify overlapping gene modules and novel candidate genes.
-Candidate genes are further studied using additional datasets.
+# Network propagation for primary ciliopathies
+
+This repository contains the code to perform the analysis as described in doi: 
+
+In the code folder the following scripts can be found:
+
+- networkPropagation.R: contains functions to run network propagation and identify protein modules
