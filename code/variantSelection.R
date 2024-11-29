@@ -19,7 +19,7 @@ variantCertain = variants[(variants$datasourceId == 'uniprot_literature' & varia
                             (variants$datasourceId == 'ot_genetics_portal' & variants$score > 0.5) | 
                             (variants$datasourceId == 'eva' & variants$score > 0.8),]
 
-variantCertainCilia = read.csv('./data/variantsCiliopathies.csv')
+variantCertainCilia = read.csv('./data/variantsCiliopathies.csv') #includes same variants as data from open targets but with some manual curation
 diseasesCilia = unique(variantCertainCilia$diseaseId)
 variantCertain = variantCertain[variantCertain$diseaseId %notin% diseasesCilia,]
 variantCertain = rbind(variantCertain, variantCertainCilia[,1:6])
@@ -50,7 +50,7 @@ mouse$modelPhenotypeId = gsub(':', '_', mouse$modelPhenotypeId)
 
 colnames(mouse)[c(2,4)] = c("diseaseId", "targetId")
 
-variantsWithHPOandMP = variantCertain[,c("diseaseId", "targetId")]
+variantsWithHPOandMP = variantCertainCilia[,c("diseaseId", "targetId")]
 variantsWithHPOandMP = rbind(variantsWithHPOandMP,mouse[,c("diseaseId", "targetId")])
 variantsWithHPOandMP = unique(variantsWithHPOandMP)
 
@@ -58,5 +58,5 @@ variantsWithHPOandMP = variantsWithHPOandMP[variantsWithHPOandMP$diseaseId %in% 
 
 # Save files ----
 
-write.csv(variantsWithHPOandMP, 'variantsCiliopathyMP.csv')
-write.csv(variantUncertainCilia, 'uncertainGenesCiliopathies.csv')
+write.csv(variantsWithHPOandMP, 'data/variantsCiliopathyMP.csv')
+write.csv(variantUncertainCilia, 'data/uncertainGenesCiliopathies.csv')
