@@ -42,8 +42,8 @@ barplot(seedNumber, las =2, ylab = 'Number of seed genes')
 
 # Add mouse phenotypes ----
 
-mouse = read.csv('Datasets/mousePhenotypes/phenotypeAll.csv', row.names = 1) # data from open targets (ftp.ebi.ac.uk/pub/databases/opentargets/platform/24.09/output/etl/json/mousePhenotypes)
-#mouse = read.csv('../../../Datasets/mousePhenotypes/phenotypeAll.csv')
+#mouse = read.csv('Datasets/mousePhenotypes/phenotypeAll.csv', row.names = 1) # data from open targets (ftp.ebi.ac.uk/pub/databases/opentargets/platform/24.09/output/etl/json/mousePhenotypes)
+mouse = read.csv('../../../Datasets/mousePhenotypes/phenotypeAll.csv')
 
 mouse$modelPhenotypeLabel = gsub('$', '_MP',mouse$modelPhenotypeLabel)
 mouse$modelPhenotypeId = gsub(':', '_', mouse$modelPhenotypeId)
