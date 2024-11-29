@@ -6,8 +6,7 @@ library(org.Hs.eg.db)
 
 # load variants from Open Targets ----
 
-#variants = read.csv('Datasets/associationByDatatypeDirect/associationAll.csv')
-variants = read.csv('Datasets/associationByDatasourceDirect/associationAll.csv')
+variants = read.csv('Datasets/associationByDatasourceDirect/associationAll.csv', row.names = 1) #data from open targets (ftp.ebi.ac.uk/pub/databases/opentargets/platform/24.09/output/etl/json/associationByOverallDirect)
 
 variantCertain = variants[(variants$datasourceId == 'uniprot_literature' & variants$score > 0.5) | 
                             (variants$datasourceId == 'gene2phenotype' & variants$score > 0.5) | 
@@ -19,7 +18,7 @@ variantCertain = variants[(variants$datasourceId == 'uniprot_literature' & varia
                             (variants$datasourceId == 'ot_genetics_portal' & variants$score > 0.5) | 
                             (variants$datasourceId == 'eva' & variants$score > 0.8),]
 
-variantCertainCilia = read.csv('20231206_variantsCiliopathy_JBTSnoOverlap.csv')
+variantCertainCilia = read.csv('./data/variantsCiliopathies.csv')
 diseasesCilia = unique(variantCertainCilia$diseaseId)
 variantCertain = variantCertain[variantCertain$diseaseId %notin% diseasesCilia,]
 variantCertain = variantCertain[,-1]
