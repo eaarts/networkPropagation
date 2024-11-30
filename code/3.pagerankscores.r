@@ -1,28 +1,18 @@
 # network propagation for ciliopathies and mouse phenotypes
 
-# Set working directory ----
-
-setwd('W:/GROUP/Users/Ellen/NetworkPropagation/')
-
 # Libraries ---- 
 
 library(igraph)
-library(pROC)
-library(doParallel)
-library(foreach)
-library(org.Hs.eg.db)
-library(tidyverse)
-library(clusterProfiler)
-library(ComplexHeatmap)
 
-source('Code/networkPropagation.R')
+source('code/networkPropagation.R')
 
 '%notin%' = Negate('%in%')
 
 # Interaction network full ----
 
 #load open targets interaction network (IntAct, Reactome, SIGNOR, STRING)
-intAll <- read.csv('./Datasets/interaction/interactionAll.csv')
+#intAll <- read.csv('./Datasets/interaction/interactionAll.csv') #data from open targets (https://ftp.ebi.ac.uk/pub/databases/IntAct/various/ot_graphdb/2022-07-22/)
+intAll <- read.csv('../../../Datasets/interaction/interactionAll.csv')
 
 #set threshold for STRING
 intString = grep('string', intAll$sourceDatabase)
@@ -42,10 +32,10 @@ rm(intAll, intGraph, intString, lowString)
 gc()
 
 # Run pageRank ----
-variantsWithHPOandMP <- read.csv()
+variantsWithHPOandMP <- read.csv('data/variantsCiliopathyMP.csv')
 
 diseasesAll = unique(variantsWithHPOandMP$diseaseId)
-diseasesAll = diseasesAll[grep('EFO|MONDO|HP|MP|Orphanet', diseasesAll)] #select IDs from DOID, EFO, HP, MONDO, Orphanet, MP, GO
+diseasesAll = diseasesAll[grep('EFO|MONDO|MP', diseasesAll)] #select IDs from EFO, MONDO, MP
 
 pageRankScoresAllTraits <- lapply(diseasesAll, FUN = function(x){getPageRank(x, intGraphClean, variantsWithHPOandMP)})
 names(pageRankScoresAllTraits) <- diseasesAll
@@ -55,7 +45,11 @@ pageRankDFAllTraits <- data.frame(t(sapply(pageRankScoresAllTraits, FUN = functi
 
 colnames(pageRankDFAllTraits) = V(intGraphClean)$name
 
+variantCertainCilia = read.csv('./data/variantsCiliopathies.csv') #includes same variants as data from open targets but with some manual curation
+diseasesCilia = unique(variantCertainCilia$diseaseId)
+
+cilioEFO = read.csv('data/EFOIdsCiliopathies.csv')
+
 pageRankDFAllTraits = pageRankDFAllTraits[!(rownames(pageRankDFAllTraits) %in% cilioEFO$ID & rownames(pageRankDFAllTraits) %notin% diseasesCilia),] #exclude extra ciliopathies
 
-#cluster disorders based on pageRank scores
-distTraits = dist(pageRankDFAllTraits, method = 'manhattan')
+saveRDS(pageRankDFAllTraits, 'data/pagerankScores.rds')
