@@ -1,9 +1,5 @@
 # similarity analysis of ciliopathies using propagation scores
 
-# Set working directory ----
-
-setwd('W:/GROUP/Users/Ellen/NetworkPropagation/')
-
 # Libraries ---- 
 
 library(tidyverse)
@@ -11,13 +7,13 @@ library(ComplexHeatmap)
 
 # Load necessary files ----
 
-pageRankScores = readRDS('20231206_pageRankScores_JBTSnoOverlap.rds') #calculated network propagation scores for ciliopathies
-traitAnnotation = read.csv('20231206_traitOverview_JBTSnoOverlap.csv') #labels for ciliopathies
-variantsCiliopathy = read.csv('20231206_variantsCiliopathy_JBTSnoOverlap.csv') #curated list of ciliopathy genes
+pageRankScores = readRDS('data/pagerankScores.rds') #calculated network propagation scores for ciliopathies
+traitAnnotation = read.csv('data/traitOverview.csv') #labels for ciliopathies
+variantsCiliopathy = read.csv('data/variantsCiliopathies.csv') #curated list of ciliopathy genes
 
 # Categorize ciliopathies with their phenotypes ----
 
-phenotype = data.frame('ciliopathy' = unique(traitAnnotation[traitAnnotation$ciliopathy == T, "trait_label"]), 'renal' = F, 'retina' = F, 'CNS' = F, 'polydactyly' = F, 'skeletal' = F, 'hearing' = F)
+phenotype = data.frame('ciliopathy' = unique(traitAnnotation[traitAnnotation$ciliopathy == T & !is.na(traitAnnotation$ciliopathy), "trait_label"]), 'renal' = F, 'retina' = F, 'CNS' = F, 'polydactyly' = F, 'skeletal' = F, 'hearing' = F)
 phenotype$renal[grep('kidney|meckel|renal|nephro|senior|orofacio|bardet', phenotype$ciliopathy, ignore.case = T)] = T
 phenotype$retina[grep('ocular|bardet|senior|usher|leber|retinitis|cone', phenotype$ciliopathy, ignore.case = T)] = T
 phenotype$CNS[grep('joubert|meckel|acrocallosal|hydrolethalus|orofacio|bardet', phenotype$ciliopathy, ignore.case = T)] = T
