@@ -11,8 +11,8 @@ source('code/networkPropagation.R')
 # Interaction network full ----
 
 #load open targets interaction network (IntAct, Reactome, SIGNOR, STRING)
-#intAll <- read.csv('./Datasets/interaction/interactionAll.csv') #data from open targets (https://ftp.ebi.ac.uk/pub/databases/IntAct/various/ot_graphdb/2022-07-22/)
-intAll <- read.csv('../../../Datasets/interaction/interactionAll.csv')
+intAll <- read.csv('./Datasets/interaction/interactionAll.csv') #data from open targets (https://ftp.ebi.ac.uk/pub/databases/IntAct/various/ot_graphdb/2022-07-22/)
+#intAll <- read.csv('../../../Datasets/interaction/interactionAll.csv')
 
 #set threshold for STRING
 intString = grep('string', intAll$sourceDatabase)
