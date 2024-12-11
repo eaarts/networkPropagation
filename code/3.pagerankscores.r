@@ -4,7 +4,7 @@
 
 library(igraph)
 
-source('code/networkPropagation.R')
+source('code/0.networkPropagation.R')
 
 '%notin%' = Negate('%in%')
 

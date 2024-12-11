@@ -1,7 +1,5 @@
 # predict genes from related traits with different numbers of traits
 
-setwd('W:/GROUP/Users/Ellen/NetworkPropagation/')
-
 '%notin%' = Negate('%in%')
 
 library(igraph)
@@ -12,25 +10,25 @@ library(doParallel)
 library(ComplexHeatmap)
 library(ggpubr)
 
-source('Code/networkPropagation.R')
+source('code/0.networkPropagation.R')
 
-distTraits = readRDS('20231215_distTraits_scaledPropagationScores_updatedJBTS.rds')
-distTraitsMatrix = as.matrix(distTraits)
+distTraitsMatrix = readRDS('data/distTraits.rds')
 
-traitAnnotation = read.csv('20231206_traitOverview_JBTSnoOverlap.csv')
+traitAnnotation = read.csv('data/traitOverview.csv')
 
-variantsWithHPOandMP = read.csv('20240105_variantsWithHPOandMP_updatedJBTS.csv')
+variantsWithHPOandMP = read.csv('data/variantsCiliopathyMP.csv')
 
-pageRankScores = readRDS('20231206_pageRankScores_JBTSnoOverlap.rds')
+pageRankScores = readRDS('data/pagerankScores.rds')
 
 # define ciliopathies ----
 
-diseasesCilia = traitAnnotation$Var1[traitAnnotation$ciliopathy == T]
+diseasesCilia = traitAnnotation$Var1[traitAnnotation$ciliopathy == T & !is.na(traitAnnotation$ciliopathy)]
 
 # load network ----
 
 #load open targets interaction network (IntAct, Reactome, SIGNOR, STRING)
-intAll <- read.csv('./Datasets/interaction/interactionAll.csv')
+intAll <- read.csv('./Datasets/interaction/interactionAll.csv') #data from open targets (https://ftp.ebi.ac.uk/pub/databases/IntAct/various/ot_graphdb/2022-07-22/)
+#intAll <- read.csv('../../../Datasets/interaction/interactionAll.csv')
 
 #set threshold for STRING
 intString = grep('string', intAll$sourceDatabase)
@@ -118,8 +116,6 @@ for (numberTraits in seq(10,100, 10)){
       }
     ))
     
-    #pageRankDFRelatedMPRank$totalRank[is.infinite(pageRankDFRelatedMPRank$totalRank)] = max(pageRankDFRelatedMPRank$totalRank[!is.infinite(pageRankDFRelatedMPRank$totalRank)])
-    
     pageRankDFRelatedMPRank = pageRankDFRelatedMPRank[order(pageRankDFRelatedMPRank$totalRank, decreasing = F),]
     
     geneList = pageRankDFRelatedMPRank$totalRank
@@ -201,8 +197,6 @@ for (i in 1:length(relatedDiseasesPerCiliopathy)){
     }
   ))
   
-  #pageRankDFRelatedMPRank$totalRank[is.infinite(pageRankDFRelatedMPRank$totalRank)] = max(pageRankDFRelatedMPRank$totalRank[!is.infinite(pageRankDFRelatedMPRank$totalRank)])
-  
   pageRankDFRelatedMPRank = pageRankDFRelatedMPRank[order(pageRankDFRelatedMPRank$totalRank, decreasing = F),]
   
   geneList = pageRankDFRelatedMPRank$totalRank
@@ -225,7 +219,6 @@ ggplot(rocResAllTrueDF, aes(y=reorder(ciliopathy, rocResAllTrue), x=rocResAllTru
 
 
 #with random neighbor traits ----
-#pageRankScores = pageRankScores[rownames(pageRankScores) %notin% c('MP_0002169','MP_0003171','MP_0003175','MP_0003176'),]
 
 mousePhenotypes = rownames(distTraitsMatrix)[grep('MP_', rownames(distTraitsMatrix))]
 

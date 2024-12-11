@@ -1,56 +1,17 @@
 # data from human protein atlas
-setwd('W:/GROUP/Users/Ellen/NetworkPropagation/')
 
 library(ComplexHeatmap)
 library(ggpubr)
 library(tidyverse)
 
-candidateGenes = read.csv('20240108_candidateGenes_pvalue0995_updatedJBTS.csv')
-variantsCiliopathy = read.csv('20231206_variantsCiliopathy_JBTSnoOverlap.csv')
-traitAnnotation = read.csv('20231206_traitOverview_JBTSnoOverlap.csv')
+variantsCiliopathy = read.csv('data/variantsCiliopathies.csv') 
+traitAnnotation = read.csv('data/traitOverview.csv')
 
 '%notin%' = Negate('%in%')
 
-
-# load consensus tissue data ----
-# 
-# rnaTissue = read_tsv('Datasets/humanProteinAtlas/rna_tissue_consensus.tsv/rna_tissue_consensus.tsv')
-# 
-# rnaTissue_ciliopathies = rnaTissue[rnaTissue$Gene %in% variantsCiliopathy$targetId,]
-# 
-# rnaTissue_ciliopathiesWide = spread(rnaTissue_ciliopathies[,c("Gene", "Tissue","nTPM")], key = 'Tissue', value = 'nTPM')
-# rnaTissue_ciliopathiesWide = column_to_rownames(rnaTissue_ciliopathiesWide, var = 'Gene')
-# rnaTissue_ciliopathiesWide = rnaTissue_ciliopathiesWide[rowSums(rnaTissue_ciliopathiesWide, na.rm = T) != 0,]
-# rnaTissue_ciliopathiesWide = rnaTissue_ciliopathiesWide[colSums(apply(rnaTissue_ciliopathiesWide,1,is.na)) == 0,]
-# 
-# rnaTissue_ciliopathiesWide_selectedGenes = rnaTissue_ciliopathiesWide[apply(rnaTissue_ciliopathiesWide, 1, max) > 10,]
-# 
-# ciliopathies = traitAnnotation$Var1[traitAnnotation$ciliopathy == T]
-# expressionCiliopathies = as.data.frame(matrix(nrow = length(ciliopathies), ncol = ncol(rnaTissue_ciliopathiesWide)))
-# for (i in 1:length(ciliopathies)){
-#   if(sum(unique(variantsCiliopathy$targetId[variantsCiliopathy$diseaseId == ciliopathies[i]]) %in% rownames(rnaTissue_ciliopathiesWide_selectedGenes)) > 1){
-#   expressionCiliopathies[i,] = apply(rnaTissue_ciliopathiesWide[rownames(rnaTissue_ciliopathiesWide) %in% variantsCiliopathy$targetId[variantsCiliopathy$diseaseId == ciliopathies[i]],], 2, mean)
-#   } else {
-#     expressionCiliopathies[i,] = NA
-#   }
-# }
-# 
-# rownames(expressionCiliopathies) = traitAnnotation$trait_label[match(ciliopathies, traitAnnotation$Var1)]
-# colnames(expressionCiliopathies) = colnames(rnaTissue_ciliopathiesWide)
-# 
-# expressionCiliopathies = expressionCiliopathies[!is.na(expressionCiliopathies[,1]),]
-# 
-# expressionCiliopathies_selected = expressionCiliopathies[,apply(expressionCiliopathies, 2, max) > 1]
-# 
-# Heatmap(scale(t(expressionCiliopathies)))
-# 
-# rownames(rnaTissue_ciliopathiesWide) = variantsCiliopathy$geneName[match(rownames(rnaTissue_ciliopathiesWide), variantsCiliopathy$targetId)]
-# 
-# Heatmap(t(scale(t(rnaTissue_ciliopathiesWide))))
-
 # load single cell consensus data ----
 
-rnaSingleCell = read_tsv('Datasets/humanProteinAtlas/rna_single_cell_type.tsv/rna_single_cell_type.tsv')
+rnaSingleCell = read_tsv('data/rna_single_cell_type.tsv') #HPA dataset
 
 rnaSingleCell_Wide = spread(rnaSingleCell[,c("Gene", "Cell type","nTPM")], key = 'Cell type', value = 'nTPM')
 rnaSingleCell_Wide = column_to_rownames(rnaSingleCell_Wide, var = 'Gene')
@@ -58,8 +19,6 @@ rnaSingleCell_Wide = rnaSingleCell_Wide[rowSums(rnaSingleCell_Wide) != 0,]
 
 rnaSingleCell_WideScaled = t(scale(t(rnaSingleCell_Wide)))
 rnaSingleCell_WideScaled = as.data.frame(rnaSingleCell_WideScaled)
-
-
 
 # use supervised learning model to define weights
 
@@ -87,7 +46,7 @@ model = glm(ciliopathyGene ~ ., family = binomial(link = 'logit'), data = trainD
 
 testPrediction = predict(model, newdata = testData, type = 'response')
 
-plot(0.79)
+pROC::roc(testData$ciliopathyGene,testPrediction)$auc
 
 car::Anova(model, type = 2)
 
@@ -109,7 +68,7 @@ HPAdata = data.frame(expression = expressionScore)
 
 # expression per ciliopathy ----
 
-ciliopathies = traitAnnotation$Var1[traitAnnotation$ciliopathy == T]
+ciliopathies = traitAnnotation$Var1[traitAnnotation$ciliopathy == T & !is.na(traitAnnotation$ciliopathy)]
 
 expressionCiliopathies = as.data.frame(matrix(nrow = length(ciliopathies), ncol = ncol(rnaSingleCell_Wide)))
 for (i in 1:length(ciliopathies)){
@@ -122,25 +81,16 @@ colnames(expressionCiliopathies) = colnames(rnaSingleCell_Wide)
 
 expressionCiliopathies = scale(t(expressionCiliopathies))
 
-#expressionCiliopathies_selected = expressionCiliopathies[apply(expressionCiliopathies, 1, max) > 1,]
 expressionCiliopathies_selected = expressionCiliopathies[rownames(expressionCiliopathies) %in% cellsForModel,]
 
 Heatmap(expressionCiliopathies_selected)
 
-rnaSingleCell_Wide_ciliopathies = rnaSingleCell_Wide[rownames(rnaSingleCell_Wide) %in% variantsCiliopathy$targetId, ]
-rownames(rnaSingleCell_Wide_ciliopathies) = variantsCiliopathy$geneName[match(rownames(rnaSingleCell_Wide_ciliopathies), variantsCiliopathy$targetId)]
-
-rnaSingleCell_Wide_ciliopathies = t(scale(t(rnaSingleCell_Wide_ciliopathies)))
-
-rnaSingleCell_Wide_ciliopathies = rnaSingleCell_Wide_ciliopathies[,colnames(rnaSingleCell_Wide_ciliopathies) %in% cellsForModel]
-
-Heatmap(rnaSingleCell_Wide_ciliopathies)
-
 # load subcellular localization data ----
 
-subcellular = read_tsv('Datasets/humanProteinAtlas/subcellular_location.tsv/subcellular_location.tsv')
+subcellular = read_tsv('data/subcellular_location.tsv') #from HPA dataset
 
-HPAdata$localization = subcellular$`Main location`[match(HPAdata$gene, subcellular$Gene)]
+HPAdata$localization = subcellular$`Main location`[match(rownames(HPAdata), subcellular$Gene)]
 
-write.csv(HPAdata, '20240329_HPAExpressionLocalization.csv')
+HPAdata = rownames_to_column(HPAdata, var = 'gene')
 
+write.csv(HPAdata, 'HPAExpressionLocalization.csv')

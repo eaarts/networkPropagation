@@ -1,7 +1,5 @@
 # look further into mouse phenotypes
 
-setwd('W:/GROUP/USERS/Ellen/NetworkPropagation/')
-
 # load libraries ----
 
 library(igraph)
@@ -20,42 +18,22 @@ source('Code/networkPropagation.R')
 
 # load files ----
 
-distTraits = readRDS('20231215_distTraits_scaledPropagationScores_updatedJBTS.rds')
-distTraitsMatrix = as.matrix(distTraits)
+traitAnnotation = read.csv('data/traitOverview.csv')
 
-traitAnnotation = read.csv('20231206_traitOverview_JBTSnoOverlap.csv')
+variantsWithHPOandMP = read.csv('data/variantsCiliopathyMP.csv')
 
-variantsWithHPOandMP = read.csv('20240105_variantsWithHPOandMP_updatedJBTS.csv')
-
-pageRankScores = readRDS('20231206_pageRankScores_JBTSnoOverlap.rds')
+pageRankScores = readRDS('data/pagerankScores.rds')
 
 # define ciliopathies ----
 
-diseasesCilia = traitAnnotation$Var1[traitAnnotation$ciliopathy == T]
-
-# load network ----
-
-#load open targets interaction network (IntAct, Reactome, SIGNOR, STRING)
-intAll <- read.csv('./Datasets/interaction/interactionAll.csv')
-
-#set threshold for STRING
-intString = grep('string', intAll$sourceDatabase)
-lowString = intString[intAll$scoring[intString] < 0.4]
-intHigh = intAll[-lowString,]
-
-intHigh = intHigh[grep('ENSG0', intHigh$targetA),]
-intHigh = intHigh[grep('ENSG0', intHigh$targetB),]
-intHigh = intHigh[!duplicated(intHigh[,c("targetA", "targetB")]),]
-
-#create graph
-intGraph = graph_from_data_frame(intHigh[,c("targetA", "targetB")], directed = F)
-intGraphClean = igraph::simplify(intGraph, remove.loops = T, remove.multiple = T, edge.attr.comb = c(weight = 'max', 'ignore'))
-
-#remove big files to save memory
-rm(intAll, intGraph, intString, lowString)
-gc()
+diseasesCilia = traitAnnotation$Var1[traitAnnotation$ciliopathy == T & !is.na(traitAnnotation$ciliopathy)]
 
 # define related mouse phenotypes per ciliopathy ----
+
+pageRankScores_scaled = scale(t(pageRankScores))
+distTraitsMatrix = as.matrix(dist(t(pageRankScores_scaled), method = 'euclidean')) 
+
+write_rds(distTraitsMatrix, 'data/distTraits.rds')
 
 distTraitsMatrix = distTraitsMatrix[rownames(distTraitsMatrix) %notin% c('MP_0002169','MP_0003171','MP_0003175','MP_0003176'),] #exclude normal phenotypes
 distTraitsMatrix = distTraitsMatrix[,colnames(distTraitsMatrix) %notin% c('MP_0002169','MP_0003171','MP_0003175','MP_0003176')] #exclude normal phenotypes
@@ -90,94 +68,8 @@ relatedMouse = unique(unlist(as.data.frame(relatedDiseasesPerCiliopathy)))
 pageRankScoresSelected = pageRankScores[rownames(pageRankScores) %in% c(diseasesCilia, relatedMouse),]
 pageRankScoresScaled = scale(t(pageRankScoresSelected))
 
-#run umap on scaled scores
-# set.seed(12345)
-# umapRes = umap::umap(t(pageRankScoresScaled))
-
-#obtain mouse phenotype ancestors for umap coloring
-# MPOntology = ontologyIndex::get_ontology('Datasets/mousePhenotypes/MP_ontology.txt')
-# MPOntology$id = gsub(':','_', MPOntology$id)
-# MPOntology$ancestors = lapply(MPOntology$ancestors, FUN = function(x){gsub(':','_', x)})
-# 
-# MPontologyAncestors = unname(gsub(':','_',MPOntology$id[sapply(MPOntology$ancestors, length) == 2])) #main MP categories only have two ancestors
-# 
-# relatedMouseAncestors = MPOntology$ancestors[match(relatedMouse, MPOntology$id)]
-# relatedMouseAncestors = lapply(relatedMouseAncestors, function(x) x[x %in% MPontologyAncestors])
-# 
-# orderMP = factor( #manual order of ancestors in case a phenotype has multiple ancestors (ordered by importance of phenotype to ciliopathies)
-#   levels = c(
-#     'MP_0005391',
-#     'MP_0005377',
-#     'MP_0005394',
-#     'MP_0005390',
-#     'MP_0005367',
-#     'MP_0005379',
-#     'MP_0005382',
-#     'MP_0005371',
-#     'MP_0005370',
-#     'MP_0003631',
-#     'MP_0005369',
-#     'MP_0005385',
-#     'MP_0005381',
-#     'MP_0005388',
-#     'MP_0005376',
-#     'MP_0005387',
-#     'MP_0005389',
-#     'MP_0005397',
-#     'MP_0010771',
-#     'MP_0005378',
-#     'MP_0005380',
-#     'MP_0005384'
-#   )
-# )
-# 
-# for (i in 1:length(relatedMouseAncestors)){
-#   if (length(relatedMouseAncestors[[i]]) == 1){
-#     next
-#   } else {
-#     ancestorOrder = match(relatedMouseAncestors[[i]], levels(orderMP))
-#     relatedMouseAncestors[[i]] = relatedMouseAncestors[[i]][ancestorOrder == min(ancestorOrder)]
-#   }
-# }
-# 
-# relatedMouseAncestors = unlist(relatedMouseAncestors)
-# names(relatedMouseAncestors)  = relatedMouse
-
-# #create dataframe for umap plot
-# umapResDF = as.data.frame(umapRes$layout)
-# umapResDF$ancestor = unname(relatedMouseAncestors)[match(rownames(umapResDF), names(relatedMouseAncestors))]
-# umapResDF$ancestorName = MPOntology$name[match(umapResDF$ancestor, MPOntology$id)]
-# umapResDF$traitLabel = traitAnnotation$trait_label[match(rownames(umapResDF), traitAnnotation$Var1)]
-# umapResDF$ancestorName[umapResDF$ancestorName %in% names(table(umapResDF$ancestorName)[table(umapResDF$ancestorName) < 4])] = 'other'
-# umapResDF$ancestorName[is.na(umapResDF$ancestorName)] = 'ciliopathy'
-# umapResDF$ciliopathy = umapResDF$ancestorName == 'ciliopathy'
-# 
-# #define colors
-# nb.cols <- length(unique(umapResDF$ancestorName))
-# mycolors <- colorRampPalette(brewer.pal(8, "Accent"))(nb.cols)
-# 
-# #plot umap
-# ggplot(umapResDF, aes(x=V1, y=V2, color = ancestorName, shape = ciliopathy)) + geom_point(size = 4) + 
-#   ggrepel::geom_text_repel(data=subset(umapResDF,traitLabel %in% traitAnnotation$trait_label[traitAnnotation$ciliopathy == T]), 
-#             aes(x=V1,y=V2,label=traitLabel), color = 'black') + theme_classic() + scale_color_manual(values = mycolors)
-# 
-# #try clustering
-# distRelatedMP = dist(t(pageRankScoresScaled))
-# 
-# set.seed(1234)
-# kmeansRes = kmeans(t(pageRankScoresScaled), centers = 10)
-# umapResDF$cluster = kmeansRes$cluster[match(rownames(umapResDF), names(kmeansRes$cluster))]
-# umapResDF$cluster = as.character(umapResDF$cluster)
-# 
-# nb.cols <- length(unique(umapResDF$cluster))
-# mycolors <- colorRampPalette(brewer.pal(9, "Set1"))(nb.cols)
-# 
-# ggplot(umapResDF, aes(x=V1, y=V2, color = cluster, shape = ciliopathy)) + geom_point(size = 4) +
-#   ggrepel::geom_text_repel(data=subset(umapResDF,traitLabel %in% traitAnnotation$trait_label[traitAnnotation$ciliopathy == T]), 
-#                            aes(x=V1,y=V2,label=traitLabel), color = 'black') + theme_classic() + scale_color_manual(values = mycolors)
-
 # hierarchical tree instead of umap ----
-MPOntology = ontologyIndex::get_ontology('Datasets/mousePhenotypes/MP_ontology.txt')
+MPOntology = ontologyIndex::get_ontology('data/MP_ontology.txt')
 MPOntology$id = gsub(':','_', MPOntology$id)
 MPOntology$ancestors = lapply(MPOntology$ancestors, FUN = function(x){gsub(':','_', x)})
 
@@ -243,7 +135,7 @@ Heatmap(hclustAncestry_wide, cluster_rows = F, col = c('white', 'red'))
 
 # modules of related mouse phenotypes ----
 
-PPIClusters = read.csv('20230929_PPIFullNetworkClusters_allEdges_max20Nodes.csv') #clusters
+PPIClusters = read.csv('data/PPIFullNetworkClusters.csv') #clusters
 
 #wilcoxon test
 cores <- detectCores()
@@ -282,21 +174,6 @@ for (i in 1:nrow(wilcoxResDF)){
 
 wilcoxResDF = wilcoxResDF[wilcoxResDF$seed > 0,]
 
-# #enrichment of modules in clusters?
-# wilcoxResDF$cluster = umapResDF$cluster[match(wilcoxResDF$trait, rownames(umapResDF))]
-# 
-# modulePercluster = as.data.frame(table(wilcoxResDF[,c("module", "cluster")]))
-# 
-# for (i in unique(modulePercluster$cluster)){
-#   modulePercluster[modulePercluster$cluster == i, 'freqByClusSize'] = modulePercluster[modulePercluster$cluster == i, "Freq"]/table(kmeansRes$cluster)[i]
-# }
-# 
-# modulePresent = rownames(umapResDF) %in% wilcoxResDF[wilcoxResDF$module == '7;29;1;3;1', "trait"]
-# 
-# ggplot(umapResDF, aes(x=V1, y=V2, color = modulePresent, shape = ciliopathy)) + geom_point(size = 4) + 
-#   ggrepel::geom_text_repel(data=subset(umapResDF,traitLabel %in% traitAnnotation$trait_label[traitAnnotation$ciliopathy == T]), 
-#                            aes(x=V1,y=V2,label=traitLabel), color = 'black') + th eme_classic() + scale_color_manual(values = c('#3A53A4', '#BE202E'))
-
 #for hclust
 hclustModules = expand.grid(unique(hclustDF$hclustClusters), unique(wilcoxResDF$module))
 
@@ -325,47 +202,3 @@ hclustModules_wide = hclustModules_wide[,apply(hclustModules_wide, 2, max) >= 0.
 hclustModules_wide = column_to_rownames(hclustModules_wide, var = 'Var1')
 
 Heatmap(hclustModules_wide, cluster_rows = F, col = c('white', 'red'))
-
-# also run pca ----
-
-# pcaRes = prcomp(t(pageRankScoresScaled))
-# 
-# pcaDF = as.data.frame(pcaRes$x)
-# 
-# pcaDF$ancestor = relatedMouseAncestorsDF$ancestor[match(rownames(pcaDF), relatedMouseAncestorsDF$MP)]
-# pcaDF$ancestorName = MPOntology$name[match(pcaDF$ancestor, MPOntology$id)]
-# pcaDF$traitLabel = traitAnnotation$trait_label[match(rownames(pcaDF), traitAnnotation$Var1)]
-# pcaDF$ancestorName[pcaDF$ancestorName %in% names(table(pcaDF$ancestorName)[table(pcaDF$ancestorName) < 4])] = 'other'
-# pcaDF$ancestorName[is.na(pcaDF$ancestorName)] = 'ciliopathy'
-# pcaDF$ciliopathy = pcaDF$ancestorName == 'ciliopathy'
-# 
-# nb.cols <- length(unique(pcaDF$ancestorName))
-# mycolors <- colorRampPalette(brewer.pal(8, "Accent"))(nb.cols)
-# 
-# ggplot(pcaDF, aes(x=PC1, y=PC2, color = ancestorName, shape = ciliopathy)) + geom_point(size = 4) + 
-#   ggrepel::geom_text_repel(data=subset(pcaDF,traitLabel %in% traitAnnotation$trait_label[traitAnnotation$ciliopathy == T]), 
-#                            aes(x=PC1,y=PC2,label=traitLabel), color = 'black') + theme_classic() + scale_color_manual(values = mycolors)
-# 
-# #can the genes that mainly split the phenotypes be identified?
-# geneContrib = get_pca_var(pcaRes)$contrib
-# indContrib = get_pca_ind(pcaRes)$contrib
-# 
-# geneMPcontrib = matrix(nrow = nrow(geneContrib), ncol = nrow(indContrib))
-# for (i in 1:ncol(indContrib)){
-#   geneMPcontrib[,i] = apply(geneContrib, 1, function(x) indContrib[i,]%*%x)
-# }
-# 
-# rownames(geneMPcontrib) = rownames(geneContrib)
-# colnames(geneMPcontrib) = rownames(indContrib)
-# 
-# #ciliopathyGenesHighContrib = unique(variantsCiliopathy[variantsCiliopathy$targetId %in% unique(names(which(geneMPcontrib > 50, arr.ind = T)[, 1])), "targetId"])
-# ciliopathyGenesHighContrib = unique(names(which(geneMPcontrib > 300, arr.ind = T)[, 1]))
-# 
-# geneMPcontrib_ciliopathy = geneMPcontrib[rownames(geneMPcontrib) %in% ciliopathyGenesHighContrib,]
-# 
-# colnames(geneMPcontrib_ciliopathy) = traitAnnotation$trait_label[match(colnames(geneMPcontrib_ciliopathy), traitAnnotation$Var1)]
-# rownames(geneMPcontrib_ciliopathy) = variantsCiliopathy$geneName[match(rownames(geneMPcontrib_ciliopathy), variantsCiliopathy$targetId)]
-# 
-# Heatmap(geneMPcontrib_ciliopathy)
-
-#

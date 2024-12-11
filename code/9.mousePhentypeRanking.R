@@ -1,7 +1,5 @@
 # rank genes on top 10 related mouse phenotypes
 
-setwd('W:/GROUP/Users/Ellen/NetworkPropagation/')
-
 '%notin%' = Negate('%in%')
 
 library(igraph)
@@ -16,23 +14,24 @@ source('Code/networkPropagation.R')
 
 # load files ----
 
-distTraits = readRDS('20231215_distTraits_scaledPropagationScores_updatedJBTS.rds')
-distTraitsMatrix = as.matrix(distTraits)
+distTraitsMatrix = readRDS('data/distTraits.rds')
 
-traitAnnotation = read.csv('20231206_traitOverview_JBTSnoOverlap.csv')
+traitAnnotation = read.csv('data/traitOverview.csv')
 
-variantsWithHPOandMP = read.csv('20240105_variantsWithHPOandMP_updatedJBTS.csv')
+variantsWithHPOandMP = read.csv('data/variantsCiliopathyMP.csv')
 
-pageRankScores = readRDS('20231206_pageRankScores_JBTSnoOverlap.rds')
+pageRankScores = readRDS('data/pagerankScores.rds')
+
 
 # define ciliopathies ----
 
-diseasesCilia = traitAnnotation$Var1[traitAnnotation$ciliopathy == T]
+diseasesCilia = traitAnnotation$Var1[traitAnnotation$ciliopathy == T & !is.na(traitAnnotation$ciliopathy)]
 
 # load network ----
 
 #load open targets interaction network (IntAct, Reactome, SIGNOR, STRING)
-intAll <- read.csv('./Datasets/interaction/interactionAll.csv')
+intAll <- read.csv('./Datasets/interaction/interactionAll.csv') #data from open targets (https://ftp.ebi.ac.uk/pub/databases/IntAct/various/ot_graphdb/2022-07-22/)
+#intAll <- read.csv('../../../Datasets/interaction/interactionAll.csv')
 
 #set threshold for STRING
 intString = grep('string', intAll$sourceDatabase)
@@ -87,7 +86,7 @@ pageRankScoresSelectedT = t(pageRankScoresSelected)
 
 #check overlapping genes between ciliopathies and mouse phenotypes ----
 
-variantsCiliopathy = read.csv('20231206_variantsCiliopathy_JBTSnoOverlap.csv')
+variantsCiliopathy = read.csv('data/variantsCiliopathies.csv') 
 
 variantsRelatedMP = variantsWithHPOandMP[variantsWithHPOandMP$diseaseId %in% relatedMouse,]
 
@@ -170,61 +169,4 @@ ggplot(donutData, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=category)) +
   xlim(c(1, 4)) +
   theme_void() +
   theme(legend.position = "none")
-
-#how many ciliopathy genes get selected?
-donutData = data.frame(category = c('yes', 'no'), count = c(sum(unique(variantsCiliopathy$targetId) %in% rankDFAll_top100$gene), sum(unique(variantsCiliopathy$targetId) %notin% rankDFAll_top100$gene)))
-donutData$fraction = donutData$count/sum(donutData$count)
-donutData$ymax = cumsum(donutData$fraction)
-donutData$ymin = c(0, head(donutData$ymax, n=-1))
-donutData$labelPosition <- (donutData$ymax + donutData$ymin) / 2
-donutData$label <- paste0(donutData$category, "\n value: ", donutData$count)
-
-ggplot(donutData, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=category)) +
-  geom_rect() +
-  geom_label( x=3.5, aes(y=labelPosition, label=label), size=6) +
-  scale_fill_manual(values = c('#3A53A4', '#BE202E')) +
-  coord_polar(theta="y") +
-  xlim(c(1, 4)) +
-  theme_void() +
-  theme(legend.position = "none")
-
-#how many selected ciliopathy genes have a mouse phenotype?
-donutData = data.frame(category = c('yes', 'no'), count = c(sum(unique(variantsCiliopathy$targetId) %in% rankDFAll_top100$gene & unique(variantsCiliopathy$targetId) %in% variantsRelatedMP$targetId), 
-                                                            sum(unique(variantsCiliopathy$targetId) %in% rankDFAll_top100$gene & unique(variantsCiliopathy$targetId) %notin% variantsRelatedMP$targetId)))
-donutData$fraction = donutData$count/sum(donutData$count)
-donutData$ymax = cumsum(donutData$fraction)
-donutData$ymin = c(0, head(donutData$ymax, n=-1))
-donutData$labelPosition <- (donutData$ymax + donutData$ymin) / 2
-donutData$label <- paste0(donutData$category, "\n value: ", donutData$count)
-
-ggplot(donutData, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=category)) +
-  geom_rect() +
-  geom_label( x=3.5, aes(y=labelPosition, label=label), size=6) +
-  scale_fill_manual(values = c('#3A53A4', '#BE202E')) +
-  coord_polar(theta="y") +
-  xlim(c(1, 4)) +
-  theme_void() +
-  theme(legend.position = "none")
-
-#how many not-selected ciliopathy genes have a mouse phenotype?
-donutData = data.frame(category = c('yes', 'no'), count = c(sum(unique(variantsCiliopathy$targetId) %notin% rankDFAll_top100$gene & unique(variantsCiliopathy$targetId) %in% variantsRelatedMP$targetId), 
-                                                            sum(unique(variantsCiliopathy$targetId) %notin% rankDFAll_top100$gene & unique(variantsCiliopathy$targetId) %notin% variantsRelatedMP$targetId)))
-donutData$fraction = donutData$count/sum(donutData$count)
-donutData$ymax = cumsum(donutData$fraction)
-donutData$ymin = c(0, head(donutData$ymax, n=-1))
-donutData$labelPosition <- (donutData$ymax + donutData$ymin) / 2
-donutData$label <- paste0(donutData$category, "\n value: ", donutData$count)
-
-ggplot(donutData, aes(ymax=ymax, ymin=ymin, xmax=4, xmin=3, fill=category)) +
-  geom_rect() +
-  geom_label( x=3.5, aes(y=labelPosition, label=label), size=6) +
-  scale_fill_manual(values = c('#3A53A4', '#BE202E')) +
-  coord_polar(theta="y") +
-  xlim(c(1, 4)) +
-  theme_void() +
-  theme(legend.position = "none")
-
-# GO enrichment of ranked genes ----
-
-test = enrichGO(rankDFAll_1.5percent[rankDFAll_1.5percent$ciliaryGene == F,"gene"], OrgDb = 'org.Hs.eg.db', keyType = 'ENSEMBL', ont = "MF")
 
