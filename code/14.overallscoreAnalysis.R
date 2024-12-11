@@ -1,15 +1,14 @@
 # analyze overall score
 
-setwd('W:/GROUP/Users/Ellen/NetworkPropagation/')
-
-traitAnnotation = read.csv('20231206_traitOverview_JBTSnoOverlap.csv')
-PPIClusters = read.csv('20230929_PPIFullNetworkClusters_allEdges_max20Nodes.csv')
-variantsCiliopathy = read.csv('20231206_variantsCiliopathy_JBTSnoOverlap.csv')
+traitAnnotation = read.csv('data/traitOverview.csv')
+PPIClusters = read.csv('data/PPIFullNetworkClusters.csv')
+variantsCiliopathy = read.csv('data/variantsCiliopathies.csv') 
 
 '%notin%' = Negate('%in%')
 
-allScoresNoKnown = read.csv('20240529_allScoresNoKnownAnnotated.csv', row.names = 1)
-allScores = read.csv('20240529_allScoresAnnotated.csv', row.names = 1)
+allScores = read.csv('data/finalScores.csv', row.names = 1)
+
+allScoresNoKnown = allScores[allScores$ciliopathyGene == F,]
 
 # correlate gene ranking ----
 lowGenes = table(allScoresNoKnown[allScoresNoKnown$overallRank > 1000, "gene"])

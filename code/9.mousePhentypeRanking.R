@@ -133,6 +133,8 @@ for (i in 1:length(relatedDiseasesPerCiliopathy)) {
   
 }
 
+write.csv(rankDFAll, 'data/rankMP.csv')
+
 rankDFAll_top100 = rankDFAll[rankDFAll$rank <= 100,]
 rankDFAll_top100$ciliaryGene = rankDFAll_top100$gene %in% variantsCiliopathy$targetId
 

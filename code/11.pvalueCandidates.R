@@ -1,20 +1,19 @@
 # candidate gene identification
 
-setwd('W:/GROUP/Users/Ellen/NetworkPropagation/')
-
 library(igraph)
 library(doParallel)
 library(foreach)
 library(tidyverse)
 
-traitAnnotation = read.csv('20231206_traitOverview_JBTSnoOverlap.csv')
-variantsWithHPOandMP = read.csv('20240105_variantsWithHPOandMP_updatedJBTS.csv')
-pageRankScores = readRDS('20231206_pageRankScores_JBTSnoOverlap.rds')
+traitAnnotation = read.csv('data/traitOverview.csv')
+variantsWithHPOandMP = read.csv('data/variantsCiliopathyMP.csv')
+pageRankScores = readRDS('data/pagerankScores.rds')
 
 '%notin%' = Negate('%in%')
 
 #load open targets interaction network (IntAct, Reactome, SIGNOR, STRING)
-intAll <- read.csv('./Datasets/interaction/interactionAll.csv')
+intAll <- read.csv('./Datasets/interaction/interactionAll.csv') #data from open targets (https://ftp.ebi.ac.uk/pub/databases/IntAct/various/ot_graphdb/2022-07-22/)
+#intAll <- read.csv('../../../Datasets/interaction/interactionAll.csv')
 
 #set threshold for STRING
 intString = grep('string', intAll$sourceDatabase)
@@ -31,7 +30,7 @@ intGraphClean = igraph::simplify(intGraph, remove.loops = T, remove.multiple = T
 
 # select ciliopathies ----
 
-disease = traitAnnotation$Var1[traitAnnotation$ciliopathy == T]
+disease = traitAnnotation$Var1[traitAnnotation$ciliopathy == T & !is.na(traitAnnotation$ciliopathy)]
 
 pageRankDF = pageRankScores[rownames(pageRankScores) %in% disease,]
 pageRankDF = pageRankDF[match(disease, rownames(pageRankDF)),]
@@ -63,7 +62,7 @@ cl <- makeCluster(cores - 1)
 registerDoParallel(cl)
 
 pageRankResRandom <- foreach(i=iter(disease, by = 'cell'), .packages = c('igraph', 'dplyr')) %dopar% {
-  source('Code/networkPropagation.R', local = T)
+  source('code/0.networkPropagation.R', local = T)
   randomPageRank(disease = i, geneVariant = variantsWithHPOandMP, intGraphClean = intGraphClean)
 }
 
@@ -92,5 +91,5 @@ candidateDFWoSeedsLong = candidateDFWoSeedsLong[candidateDFWoSeedsLong$pvalue >=
 candidateDFWoSeedsLong$symbol = AnnotationDbi::mapIds(org.Hs.eg.db, keys = candidateDFWoSeedsLong$gene, column = 'SYMBOL', keytype = 'ENSEMBL', multiVals = 'first')
 candidateDFWoSeedsLong$diseaseName = traitAnnotation$trait_label[match(candidateDFWoSeedsLong$diseaseID, traitAnnotation$Var1)]
 
-write.csv(candidateDFWoSeedsLong, '20240108_candidateGenes_pvalue0995_updatedJBTS.csv')
+write.csv(candidateDFWoSeedsLong, 'pvaluesPropagation.csv')
 

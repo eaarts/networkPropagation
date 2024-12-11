@@ -1,23 +1,22 @@
 # recover ciliary genes with pipeline for candidate gene selection
 
-setwd('W:/GROUP/Users/Ellen/NetworkPropagation/')
-
 library(igraph)
 library(doParallel)
 library(foreach)
 library(tidyverse)
 
-traitAnnotation = read.csv('20231206_traitOverview_JBTSnoOverlap.csv')
-variantsCiliopathy = read.csv('20231206_variantsCiliopathy_JBTSnoOverlap.csv')
-pageRankScores = readRDS('20231206_pageRankScores_JBTSnoOverlap.rds')
-variantsWithHPOandMP = read.csv('20240105_variantsWithHPOandMP_updatedJBTS.csv')
+traitAnnotation = read.csv('data/traitOverview.csv')
+variantsWithHPOandMP = read.csv('data/variantsCiliopathyMP.csv')
+pageRankScores = readRDS('data/pagerankScores.rds')
+variantsCiliopathy = read.csv('data/variantsCiliopathies.csv') 
 
 '%notin%' = Negate('%in%')
 
 pageRankScoresMP = pageRankScores[grep('MP_', rownames(pageRankScores)),]
 
 #load open targets interaction network (IntAct, Reactome, SIGNOR, STRING)
-intAll <- read.csv('./Datasets/interaction/interactionAll.csv')
+intAll <- read.csv('./Datasets/interaction/interactionAll.csv') #data from open targets (https://ftp.ebi.ac.uk/pub/databases/IntAct/various/ot_graphdb/2022-07-22/)
+#intAll <- read.csv('../../../Datasets/interaction/interactionAll.csv')
 
 #set threshold for STRING
 intString = grep('string', intAll$sourceDatabase)
@@ -48,7 +47,7 @@ randomPageRank <- function(disease, geneVariant, intGraphClean) {
 
 pageRankResRandom <- randomPageRank(disease = disease, geneVariant = variantsCiliopathy, intGraphClean = intGraphClean)
 
-rnaSingleCell = read_tsv('Datasets/humanProteinAtlas/rna_single_cell_type.tsv/rna_single_cell_type.tsv')
+rnaSingleCell = read_tsv('data/rna_single_cell_type.tsv')
 
 rnaSingleCell_Wide = spread(rnaSingleCell[,c("Gene", "Cell type","nTPM")], key = 'Cell type', value = 'nTPM')
 rnaSingleCell_Wide = column_to_rownames(rnaSingleCell_Wide, var = 'Gene')
@@ -205,33 +204,22 @@ for (disease in c('MONDO_custom',
 
 # overall selection of genes ----
 
-#allScoresAllPosNeg[,1:3] = apply(allScores[,1:3], 2, function(x) (x-min(x))/(max(x)-min(x)))
-
-# allScoresAll_allTraits_scaled = allScoresAllPosNeg_allTraits
-# 
-# allScoresAll_allTraits_scaled[,1:3] = apply(allScoresAll_allTraits_scaled[,1:3], 2, function(x) (x-min(x))/(max(x)-min(x)))
-
-# allScoresAll_allTraits$pvalue = -log10(1 - allScoresAll_allTraits$pvalue + 0.001)
-# allScoresAll_allTraits$geneExpression = log(allScoresAll_allTraits$geneExpression) 
-# allScoresAll_allTraits$rank = (allScoresAll_allTraits$rank-min(allScoresAll_allTraits$rank))/(min(allScoresAll_allTraits$rank)-max(allScoresAll_allTraits$rank))
-
 allScoresAllPosNeg_allTraits_scaled$geneExpressionLog = log(allScoresAllPosNeg_allTraits_scaled$geneExpression)
 allScoresAllPosNeg_allTraits_scaled$geneExpressionLog[is.infinite(allScoresAllPosNeg_allTraits_scaled$geneExpressionLog)] = min(allScoresAllPosNeg_allTraits_scaled$geneExpressionLog[!is.infinite(allScoresAllPosNeg_allTraits_scaled$geneExpressionLog)])
 
 modelOverall = glm(label ~ geneExpressionLog + pvalue + rank, family = binomial(link = 'logit'), data = allScoresAllPosNeg_allTraits_scaled) 
-# modelOverallExprLog = glm(label ~ geneExpressionLog + pvalue + rank, family = binomial(link = 'logit'), data = allScoresAll_allTraits_scaled) 
 
 modelOverallPvalue = glm(label ~ pvalue, family = binomial(link = 'logit'), data = allScoresAllPosNeg_allTraits_scaled) 
 modelOverallExpr = glm(label ~ geneExpressionLog, family = binomial(link = 'logit'), data = allScoresAllPosNeg_allTraits_scaled) 
 modelOverallRank = glm(label ~ rank, family = binomial(link = 'logit'), data = allScoresAllPosNeg_allTraits_scaled) 
 modelOverallRankPvalue = glm(label ~ pvalue + rank, family = binomial(link = 'logit'), data = allScoresAllPosNeg_allTraits_scaled) 
 
-write.csv(allScoresAllPosNeg_allTraits_scaled, '20240517_trainScoresPosNeg_scaled_10MP_5train.csv')
-write.csv(allScoresAll_allTraits_scaled, '20240517_trainScoresAllGenes_scaled_10MP_5train.csv')
+#write.csv(allScoresAllPosNeg_allTraits_scaled, '20240517_trainScoresPosNeg_scaled_10MP_5train.csv')
+#write.csv(allScoresAll_allTraits_scaled, '20240517_trainScoresAllGenes_scaled_10MP_5train.csv')
 
-write_rds(modelOverallRankPvalue, '20240529_modelPvalueRank.rds')
+write_rds(modelOverallRankPvalue, 'data/candidateModel.rds')
 
-# use model for Meckel and NPHP ----
+# test model with other ciliopathies ----
 
 testCiliopathies = list()
 allScoresScaledTest = list()
@@ -432,7 +420,7 @@ boxplotAUC = lapply(testCiliopathies[1:6], function(x) x[[3]] %>%
 cowplot::plot_grid(plotlist = boxplotAUC, ncol = 4)
 
 modelTest = list('accuracies' = testCiliopathies, 'allscores' = allScoresTest, 'allscoresscaled' = allScoresScaledTest)
-write_rds(modelTest, '20240723_accuraciesTestCiliopathies_train5genes_min10Genes.rds')
+#write_rds(modelTest, '20240723_accuraciesTestCiliopathies_train5genes_min10Genes.rds')
 
 #plot for all ciliopathies in one plot
 bind_rows(lapply(testCiliopathies[1:6], function(x) x[[3]])) %>%
