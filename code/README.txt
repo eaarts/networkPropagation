@@ -1,0 +1,16 @@
+0.ciliopathyIds.R: obtain IDs for ciliopathies.
+0.networkPropagation.R: function to run network propagation.
+1.variantSelection.R: select seed genes for traits.
+2.barplotDatasources.R: create barplot for seed gene data sources.
+3.pagerankscores.R: calculate network propagation scores for all traits.
+4.comparisonCiliopathies.R: compare network propagation scores between ciliopathies and link to their phenotypes.
+5.clusterFullProteinNetwork.R: cluster protein interaction network using Walktrap clustering.
+6.modulesCiliopathies_final.R: link ciliopathies to protein modules using enrichment.
+7.mousePhenotypes.R: find mouse phenotypes with similar network propagation scores as human ciliopathies.
+8.relatedMP_auc.R: predict human ciliopathy genes using identified mouse phenotypes.
+9.mousePhenotypeRanking.R: ranking of genes for association with human ciliopathies based on mouse phenotypes.
+10.expressionHPA.R: using scRNA-seq data from HPA to predict human ciliopathy genes.
+11.pvalueCandidates.R: use permutation to calculate p-values for network propagation scores.
+12.geneSelectionPipelineTest_v2.R: predict human ciliopathy genes by combining network propagation p-values, mouse phenotype ranking, and expression scores.
+13.overallScoreCalculation.R: calculate overall score based on model combining netowrk propagation p-values and mouse phenotype ranking.
+14.overallscoreAnalysis.R: analyse which genes are ranked high for human ciliopathies based on our model.
